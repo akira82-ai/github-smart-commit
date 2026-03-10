@@ -47,24 +47,12 @@ def generate_commit_message(analysis, custom_message=None, language="zh"):
         body_parts.append(change_description)
         body_parts.append("")
 
-    # 添加修改的文件列表（精简版）
+    # 如果文件太多，添加提示（已在描述中体现主要文件）
     modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
-
-    if modified_files or added_files or deleted_files:
-        header = i18n.get_text(i18n.FILE_STATS, language, "modified_files_header")
-        body_parts.append(header)
-        for file in modified_files[:8]:
-            body_parts.append(f"  {file}")
-        for file in added_files[:5]:
-            body_parts.append(f"  + {file}")
-        for file in deleted_files[:3]:
-            body_parts.append(f"  - {file}")
-
-        total_files = len(modified_files) + len(added_files) + len(deleted_files)
-        shown_files = min(8, len(modified_files)) + min(5, len(added_files)) + min(3, len(deleted_files))
-        if total_files > shown_files:
-            more_text = i18n.get_text(i18n.FILE_STATS, language, "more_files", count=total_files - shown_files)
-            body_parts.append(more_text)
+    total_files = len(modified_files) + len(added_files) + len(deleted_files)
+    if total_files > 15:
+        more_text = f"完整变更: 共 {total_files} 个文件"
+        body_parts.append(more_text)
         body_parts.append("")
 
     # 构建 footer
@@ -90,35 +78,33 @@ def generate_commit_message(analysis, custom_message=None, language="zh"):
 
 def generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, language):
     """智能生成 subject（符合 Conventional Commits 规范）"""
-    action = i18n.get_text(i18n.TYPE_DESCRIPTIONS, language, change_type, "更新")
-
     modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
 
-    all_files = modified_files + added_files + deleted_files
-    target = utils.extract_target_from_files(all_files) if all_files else ""
+    # 分析变更内容，生成更准确的 subject
+    subject_desc = generate_subject_description(modified_files, added_files, deleted_files, change_type, scope, language)
 
     # 构建 subject（简化格式，更符合中文习惯）
-    if scope and target:
-        subject = f"{emoji} {change_type}({scope}): {action} {target}"
+    if scope and subject_desc:
+        subject = f"{emoji} {change_type}({scope}): {subject_desc}"
     elif scope:
-        subject = f"{emoji} {change_type}({scope}): {action}"
-    elif target:
-        subject = f"{emoji} {change_type}: {action} {target}"
+        subject = f"{emoji} {change_type}({scope}): 更新"
+    elif subject_desc:
+        subject = f"{emoji} {change_type}: {subject_desc}"
     else:
         # 如果没有明确目标，使用通用描述
         generic_descriptions = {
-            "feat": "添加新功能" if language == "zh" else "Add new feature",
-            "fix": "修复问题" if language == "zh" else "Fix issue",
-            "refactor": "重构代码" if language == "zh" else "Refactor code",
-            "docs": "更新文档" if language == "zh" else "Update docs",
-            "style": "调整样式" if language == "zh" else "Fix style",
-            "test": "添加测试" if language == "zh" else "Add tests",
-            "chore": "更新配置" if language == "zh" else "Update config",
-            "perf": "优化性能" if language == "zh" else "Optimize performance",
-            "ci": "更新 CI 配置" if language == "zh" else "Update CI config",
-            "build": "更新构建配置" if language == "zh" else "Update build config"
+            "feat": "添加新功能",
+            "fix": "修复问题",
+            "refactor": "重构代码",
+            "docs": "更新文档",
+            "style": "调整样式",
+            "test": "添加测试",
+            "chore": "更新配置",
+            "perf": "优化性能",
+            "ci": "更新 CI",
+            "build": "更新构建"
         }
-        subject = f"{emoji} {change_type}: {generic_descriptions.get(change_type, action)}"
+        subject = f"{emoji} {change_type}: {generic_descriptions.get(change_type, '更新')}"
 
     if is_breaking:
         subject += " !"
@@ -126,18 +112,86 @@ def generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, lan
     return subject
 
 
+def generate_subject_description(modified_files, added_files, deleted_files, change_type, scope, language):
+    """根据文件变更生成 subject 描述"""
+    all_files = modified_files + added_files + deleted_files
+    if not all_files:
+        return None
+
+    # 特殊文件优先
+    for file in all_files:
+        if "README" in file.upper():
+            return "更新项目文档"
+
+    # 根据 scope 和 change_type 判断（更准确）
+    scope_action_map = {
+        ("feat", "auth"): "添加认证功能",
+        ("feat", "api"): "添加 API 接口",
+        ("feat", "ui"): "添加 UI 组件",
+        ("fix", "auth"): "修复认证问题",
+        ("fix", "api"): "修复 API 问题",
+        ("refactor", "core"): "重构核心代码",
+        ("refactor", ""): "重构代码结构",
+    }
+
+    key = (change_type, scope)
+    if key in scope_action_map:
+        return scope_action_map[key]
+
+    # 根据变更类型和 scope 生成通用描述
+    if scope:
+        action_map = {
+            "feat": "添加",
+            "fix": "修复",
+            "refactor": "重构",
+            "docs": "更新",
+            "style": "调整",
+            "test": "添加",
+            "chore": "更新",
+            "perf": "优化",
+        }
+        return f"{action_map.get(change_type, '更新')}{scope}"
+
+    # 根据变更类型判断
+    if change_type == "docs":
+        return "更新文档"
+
+    # 根据主要文件类型判断
+    file_types = {}
+    for file in all_files:
+        ext = file.split(".")[-1] if "." in file else "unknown"
+        file_types[ext] = file_types.get(ext, 0) + 1
+
+    dominant_type = max(file_types, key=file_types.get)
+
+    type_mapping = {
+        "py": "Python 代码",
+        "js": "JavaScript 代码",
+        "md": "文档",
+        "json": "配置",
+        "yml": "配置",
+        "yaml": "配置",
+        "sh": "脚本"
+    }
+
+    if dominant_type in type_mapping:
+        return f"更新{type_mapping[dominant_type]}"
+
+    return None
+
+
 def generate_change_description(analysis, language):
-    """生成变更描述（更详细）"""
+    """生成变更描述（详细说明变更原因）"""
     modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
 
     if not modified_files and not added_files and not deleted_files:
         return ""
 
-    lines = []
     change_type = analysis.get("type", "")
     scope = analysis.get("scope", "")
 
     # 统计信息
+    lines = []
     if added_files:
         lines.append(i18n.get_text(i18n.FILE_STATS, language, "added", count=len(added_files)))
     if deleted_files:
@@ -145,19 +199,142 @@ def generate_change_description(analysis, language):
     if modified_files:
         lines.append(i18n.get_text(i18n.FILE_STATS, language, "modified", count=len(modified_files)))
 
-    # 根据类型和范围添加更具体的描述
-    if change_type and language == "zh":
-        descriptions = i18n.CHANGE_DESCRIPTIONS.get("zh", {})
-        type_descs = descriptions.get(change_type, {})
-
-        if scope and scope in type_descs:
-            lines.append("")
-            lines.append(type_descs[scope])
-        elif "default" in type_descs:
-            lines.append("")
-            lines.append(type_descs["default"])
+    # 根据文件内容生成智能描述
+    description_lines = generate_smart_description(modified_files, added_files, deleted_files, change_type, language)
+    if description_lines:
+        lines.append("")
+        lines.extend(description_lines)
 
     return "\n".join(lines)
+
+
+def generate_smart_description(modified_files, added_files, deleted_files, change_type, language):
+    """根据文件内容生成智能描述"""
+    descriptions = []
+
+    # 分析新增文件
+    if added_files:
+        for file in added_files:
+            desc = describe_file_change(file, "added", language)
+            if desc:
+                descriptions.append(f"  + {file} - {desc}")
+
+    # 分析修改文件
+    if modified_files:
+        for file in modified_files:
+            desc = describe_file_change(file, "modified", language)
+            if desc:
+                descriptions.append(f"  ~ {file} - {desc}")
+
+    # 分析删除文件
+    if deleted_files:
+        for file in deleted_files:
+            descriptions.append(f"  - {file}")
+
+    # 添加总体变更说明
+    if change_type and language == "zh":
+        change_descriptions = {
+            "feat": "添加新功能，增强系统能力",
+            "fix": "修复已知问题，提升稳定性",
+            "refactor": "重构代码结构，提升可维护性",
+            "docs": "更新项目文档",
+            "style": "调整代码样式，统一格式",
+            "test": "完善测试覆盖",
+            "chore": "更新配置和工具",
+            "perf": "优化性能，提升响应速度",
+            "ci": "更新 CI/CD 配置",
+            "build": "更新构建配置"
+        }
+        if descriptions:
+            descriptions.insert(0, "")
+            descriptions.insert(0, change_descriptions.get(change_type, "更新代码"))
+
+    return descriptions
+
+
+def describe_file_change(filepath, change_type, language):
+    """描述单个文件的变更内容"""
+    filename = filepath.lower()
+    path_parts = filepath.split("/")
+
+    # 根据路径和文件名判断
+    # 认证相关
+    if "auth" in filename or "login" in filename or "oauth" in filename:
+        if "provider" in filename:
+            return "OAuth 提供商"
+        elif "session" in filename:
+            return "会话管理"
+        return "认证模块"
+
+    # API 相关
+    if "api" in filename:
+        if "user" in filename:
+            return "用户 API"
+        return "API 接口"
+
+    # 数据库相关
+    if "db" in filename or "database" in filename or "query" in filename:
+        return "数据库操作"
+
+    # UI 相关
+    if "ui" in filename or "component" in filename or "view" in filename:
+        return "UI 组件"
+
+    # 测试相关
+    if "test" in filename:
+        if change_type == "added":
+            return "测试用例"
+        return "测试代码"
+
+    # 配置相关
+    if "config" in filename:
+        return "配置管理"
+
+    # 文档类
+    if any(doc in filename for doc in ["readme", "contributing", "changelog", "license"]):
+        if change_type == "added":
+            return "添加项目文档"
+        elif change_type == "modified":
+            return "更新文档说明"
+
+    # Git 配置
+    if ".gitmessage" in filename or "gitignore" in filename:
+        return "Git 模板"
+
+    # 脚本类
+    if filename.endswith(".sh"):
+        if "install" in filename:
+            return "安装脚本"
+        elif "build" in filename:
+            return "构建脚本"
+        return "Shell 脚本"
+
+    # Python 脚本
+    if filename.endswith(".py"):
+        if "i18n" in filename:
+            return "国际化文本"
+        elif "utils" in filename:
+            return "工具函数"
+        elif "generate" in filename or "gen" in filename:
+            return "生成器"
+        elif "analyze" in filename or "analysis" in filename:
+            return "分析器"
+        return "Python 模块"
+
+    # 配置文件
+    if any(ext in filename for ext in [".json", ".yaml", ".yml", ".toml", ".xml"]):
+        return "配置文件"
+
+    # 示例/模板文件
+    if "example" in filename or "template" in filename or "sample" in filename:
+        return "示例文件"
+
+    # 默认返回文件类型
+    if change_type == "added":
+        return "新文件"
+    elif change_type == "modified":
+        return "更新"
+    return None
 
 
 def main():
