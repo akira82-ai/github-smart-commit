@@ -1,0 +1,16 @@
+{
+  "$schema": "./config-schema.json",
+  "_comment": "GitHub Smart Commit 配置文件",
+  "language": "zh",
+  "auto_update_readme": true,
+  "auto_update_version": true,
+  "auto_update_changelog": false,
+  "always_show_template_choice": true,
+  "commit_message_template": null,
+  "readme_style": "auto",
+  "version_scheme": "semver",
+  "include_issue_refs": true,
+  "max_files_in_commit": 10,
+  "pre_commit_hooks": [],
+  "post_commit_hooks": []
+}
