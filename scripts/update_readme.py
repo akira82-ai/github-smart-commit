@@ -8,11 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-# 支持直接运行和模块导入
-try:
-    from . import utils
-except ImportError:
-    import utils
+from . import utils
 
 
 def detect_readme_style(content):

@@ -7,7 +7,12 @@ import re
 from datetime import datetime
 from typing import Dict, List, Tuple
 from pathlib import Path
-import json
+
+
+# 常用目录和忽略的文件名
+COMMON_ROOTS = ["src", "lib", "app", "dist", "build", "test", "tests"]
+IGNORED_PARTS = ["src", "lib", "app", "index", "main"]
+CONFIG_EXTENSIONS = (".json", ".yaml", ".yml", ".toml", ".md")
 
 
 # 预编译的正则表达式
@@ -62,15 +67,6 @@ class Patterns:
         re.compile(r"version.*badge"),
         re.compile(r"badge.*version")
     ]
-
-
-# 文件类型常量
-class FileTypes:
-    """文件扩展名和路径常量"""
-
-    CONFIG_EXTENSIONS = (".json", ".yaml", ".yml", ".toml", ".md")
-    COMMON_ROOTS = ["src", "lib", "app", "dist", "build", "test", "tests"]
-    IGNORED_PARTS = ["src", "lib", "app", "index", "main"]
 
 
 def get_today() -> str:
@@ -157,7 +153,7 @@ def sanitize_filename(filename: str) -> str:
     Returns:
         清理后的文件名
     """
-    if "." in filename and not filename.endswith(FileTypes.CONFIG_EXTENSIONS):
+    if "." in filename and not filename.endswith(CONFIG_EXTENSIONS):
         return filename.rsplit(".", 1)[0]
     return filename
 
@@ -177,11 +173,10 @@ def extract_target_from_files(files: List[str]) -> str:
 
     main_file = files[0]
 
-    # 如果是路径，提取最后部分
     if "/" in main_file:
         parts = main_file.split("/")
         for part in reversed(parts):
-            if part and part not in FileTypes.IGNORED_PARTS:
+            if part and part not in IGNORED_PARTS:
                 target = part
                 break
         else:
@@ -190,30 +185,3 @@ def extract_target_from_files(files: List[str]) -> str:
         target = main_file
 
     return sanitize_filename(target)
-
-
-def read_json_file(path: Path) -> dict:
-    """
-    读取 JSON 文件
-
-    Args:
-        path: 文件路径
-
-    Returns:
-        JSON 数据字典
-    """
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def write_json_file(path: Path, data: dict, indent: int = 2) -> None:
-    """
-    写入 JSON 文件
-
-    Args:
-        path: 文件路径
-        data: 要写入的数据
-        indent: 缩进空格数
-    """
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=indent, ensure_ascii=False)

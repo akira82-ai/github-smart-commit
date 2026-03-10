@@ -32,36 +32,6 @@ TYPE_DESCRIPTIONS = {
     }
 }
 
-# CHANGELOG 分类
-CHANGELOG_CATEGORIES = {
-    "en": {
-        "feat": "Added",
-        "fix": "Fixed",
-        "refactor": "Changed",
-        "perf": "Changed",
-        "docs": "Changed",
-        "style": "Changed",
-        "test": "Changed",
-        "ci": "Changed",
-        "build": "Changed",
-        "chore": "Changed",
-        "security": "Security"
-    },
-    "zh": {
-        "feat": "新增",
-        "fix": "修复",
-        "refactor": "变更",
-        "perf": "优化",
-        "docs": "文档",
-        "style": "样式",
-        "test": "测试",
-        "ci": "CI",
-        "build": "构建",
-        "chore": "其他",
-        "security": "安全"
-    }
-}
-
 # 文件统计描述
 FILE_STATS = {
     "en": {
@@ -84,26 +54,6 @@ FILE_STATS = {
 BREAKING_WARNING = {
     "en": "⚠️ BREAKING CHANGE: This update contains breaking changes",
     "zh": "⚠️ 破坏性变更：此更新包含不兼容的 API 变更"
-}
-
-# CHANGELOG 标题
-CHANGELOG_HEADERS = {
-    "en": {
-        "title": "Changelog",
-        "description": "All notable changes to this project will be documented in this file.",
-        "breaking": "### ⚠️ Breaking Changes",
-        "default_category": "Changed",
-        "default_desc": "- Code updates",
-        "update_module": "- Update `{scope}` module"
-    },
-    "zh": {
-        "title": "变更日志",
-        "description": "本文档记录项目的所有重要变更。",
-        "breaking": "### ⚠️ 破坏性变更",
-        "default_category": "变更",
-        "default_desc": "- 代码更新",
-        "update_module": "- 更新 `{scope}` 模块"
-    }
 }
 
 

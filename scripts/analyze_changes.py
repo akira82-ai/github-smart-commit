@@ -3,7 +3,6 @@
 分析 Git 代码变更
 - 变更类型（feat/fix/refactor/docs 等）
 - 影响范围（scope）
-- 版本升级类型（major/minor/patch）
 - 选择合适的 gitmoji
 """
 
@@ -13,11 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-# 支持直接运行和模块导入
-try:
-    from . import utils
-except ImportError:
-    import utils
+from . import utils
 
 
 def run_git_command(cmd):
@@ -31,7 +26,7 @@ def run_git_command(cmd):
             check=True
         )
         return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         return None
 
 
@@ -54,7 +49,6 @@ def analyze_change_type(diff_info):
     返回：{
         "type": "feat|fix|refactor|docs|style|test|chore",
         "scope": "模块名称",
-        "version_bump": "major|minor|patch",
         "emoji": "✨",
         "is_breaking": false
     }
@@ -67,8 +61,8 @@ def analyze_change_type(diff_info):
     is_breaking = (
         "breaking change" in diff or
         "breaking:" in diff or
-        "!" in diff or  # Conventional Commits 的 ! 标记
-        any("break" in line for line in diff.split("\n")[:20])  # 前20行
+        "!" in diff or
+        any("break" in line for line in diff.split("\n")[:20])
     )
 
     # 解析修改的文件列表
@@ -93,14 +87,6 @@ def analyze_change_type(diff_info):
         diff, stat, modified_files, added_files, deleted_files
     )
 
-    # 确定版本升级类型
-    if is_breaking:
-        version_bump = "major"
-    elif change_type == "feat":
-        version_bump = "minor"
-    else:
-        version_bump = "patch"
-
     # 选择 emoji
     emoji_map_path = Path(__file__).parent.parent / "references" / "gitmoji-map.json"
     with open(emoji_map_path, "r", encoding="utf-8") as f:
@@ -116,7 +102,6 @@ def analyze_change_type(diff_info):
     return {
         "type": change_type,
         "scope": scope,
-        "version_bump": version_bump,
         "emoji": emoji,
         "is_breaking": is_breaking,
         "modified_files": modified_files,
@@ -128,7 +113,6 @@ def analyze_change_type(diff_info):
 
 def analyze_change_type_intelligent(diff, stat, modified_files, added_files, deleted_files):
     """智能分析变更类型"""
-    # 预编译正则表达式以提高性能
     file_patterns = {
         "docs": [re.compile(p, re.IGNORECASE) for p in [r"\.md$", r"docs/", r"README", r"CHANGELOG", r"LICENSE"]],
         "test": [re.compile(p, re.IGNORECASE) for p in [r"test", r"spec", r"__tests__", r"\.test\.", r"\.spec\."]],
@@ -137,7 +121,6 @@ def analyze_change_type_intelligent(diff, stat, modified_files, added_files, del
         "build": [re.compile(p, re.IGNORECASE) for p in [r"webpack", r"vite", r"rollup", r"\.babelrc", r"tsconfig"]],
     }
 
-    # 使用 itertools.chain 避免列表拼接
     from itertools import chain
     all_files = chain(modified_files, added_files, deleted_files)
 
@@ -146,7 +129,7 @@ def analyze_change_type_intelligent(diff, stat, modified_files, added_files, del
             if any(pattern.search(file) for file in all_files):
                 return change_type
 
-    # 优先级 2：检查 diff 内容中的关键词（更智能的匹配）
+    # 检查 diff 内容中的关键词
     content_keywords = {
         "feat": [
             re.compile(r"add\s+\w+\s+function", re.IGNORECASE),
@@ -192,15 +175,14 @@ def analyze_change_type_intelligent(diff, stat, modified_files, added_files, del
             if pattern.search(diff):
                 return change_type
 
-    # 优先级 3：检查是否有大量文件删除（可能是清理）
+    # 检查是否有大量文件删除（可能是清理）
     if len(deleted_files) > len(added_files) * 2:
         return "chore"
 
-    # 优先级 4：检查是否有新增文件（倾向于 feat）
+    # 检查是否有新增文件（倾向于 feat）
     if len(added_files) > len(modified_files):
         return "feat"
 
-    # 默认返回 chore
     return "chore"
 
 
@@ -209,7 +191,6 @@ def extract_scope_intelligent(modified_files, added_files, deleted_files):
     if not modified_files and not added_files:
         return ""
 
-    # 使用 itertools.chain 避免列表拼接
     from itertools import chain
     all_files = chain(modified_files, added_files)
     scopes = []
@@ -217,8 +198,7 @@ def extract_scope_intelligent(modified_files, added_files, deleted_files):
     for file_path in all_files:
         parts = Path(file_path).parts
 
-        # 使用 utils 模块中的常量
-        if parts and parts[0] in utils.FileTypes.COMMON_ROOTS:
+        if parts and parts[0] in utils.COMMON_ROOTS:
             if len(parts) > 1:
                 scopes.append(parts[1])
         elif parts:
@@ -229,7 +209,6 @@ def extract_scope_intelligent(modified_files, added_files, deleted_files):
         from collections import Counter
         most_common = Counter(scopes).most_common(1)
         if most_common:
-            # 只有当某个 scope 出现超过 50% 时才使用
             scope, count = most_common[0]
             if count >= len(list(all_files)) * 0.5:
                 return scope
