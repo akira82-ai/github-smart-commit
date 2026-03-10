@@ -13,6 +13,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+# 支持直接运行和模块导入
+try:
+    from . import utils
+except ImportError:
+    import utils
+
 
 def run_git_command(cmd):
     """执行 git 命令"""
@@ -122,66 +128,68 @@ def analyze_change_type(diff_info):
 
 def analyze_change_type_intelligent(diff, stat, modified_files, added_files, deleted_files):
     """智能分析变更类型"""
-    # 优先级 1：检查文件路径和扩展名
+    # 预编译正则表达式以提高性能
     file_patterns = {
-        "docs": [r"\.md$", r"docs/", r"README", r"CHANGELOG", r"LICENSE"],
-        "test": [r"test", r"spec", r"__tests__", r"\.test\.", r"\.spec\."],
-        "style": [r"\.css$", r"\.scss$", r"\.sass$", r"\.less$", r"style/"],
-        "ci": [r"\.github/", r"\.gitlab-ci\.yml", r"\travis\.yml", r"jenkins"],
-        "build": [r"webpack", r"vite", r"rollup", r"\.babelrc", r"tsconfig"],
+        "docs": [re.compile(p, re.IGNORECASE) for p in [r"\.md$", r"docs/", r"README", r"CHANGELOG", r"LICENSE"]],
+        "test": [re.compile(p, re.IGNORECASE) for p in [r"test", r"spec", r"__tests__", r"\.test\.", r"\.spec\."]],
+        "style": [re.compile(p, re.IGNORECASE) for p in [r"\.css$", r"\.scss$", r"\.sass$", r"\.less$", r"style/"]],
+        "ci": [re.compile(p, re.IGNORECASE) for p in [r"\.github/", r"\.gitlab-ci\.yml", r"\travis\.yml", r"jenkins"]],
+        "build": [re.compile(p, re.IGNORECASE) for p in [r"webpack", r"vite", r"rollup", r"\.babelrc", r"tsconfig"]],
     }
 
-    all_files = modified_files + added_files + deleted_files
+    # 使用 itertools.chain 避免列表拼接
+    from itertools import chain
+    all_files = chain(modified_files, added_files, deleted_files)
 
     for change_type, patterns in file_patterns.items():
         for pattern in patterns:
-            if any(re.search(pattern, file, re.IGNORECASE) for file in all_files):
+            if any(pattern.search(file) for file in all_files):
                 return change_type
 
     # 优先级 2：检查 diff 内容中的关键词（更智能的匹配）
     content_keywords = {
         "feat": [
-            r"add\s+\w+\s+function",
-            r"implement\s+\w+",
-            r"new\s+\w+",
-            r"create\s+\w+",
-            r"\+\s*class\s+\w+",
-            r"\+\s*def\s+\w+",
-            r"\+\s*function\s+\w+"
+            re.compile(r"add\s+\w+\s+function", re.IGNORECASE),
+            re.compile(r"implement\s+\w+", re.IGNORECASE),
+            re.compile(r"new\s+\w+", re.IGNORECASE),
+            re.compile(r"create\s+\w+", re.IGNORECASE),
+            re.compile(r"\+\s*class\s+\w+", re.IGNORECASE),
+            re.compile(r"\+\s*def\s+\w+", re.IGNORECASE),
+            re.compile(r"\+\s*function\s+\w+", re.IGNORECASE)
         ],
         "fix": [
-            r"fix\s+\w+",
-            r"bug\s*\w*\s*fix",
-            r"resolve\s+\w+",
-            r"patch\s+\w+",
-            r"issue\s+\d+"
+            re.compile(r"fix\s+\w+", re.IGNORECASE),
+            re.compile(r"bug\s*\w*\s*fix", re.IGNORECASE),
+            re.compile(r"resolve\s+\w+", re.IGNORECASE),
+            re.compile(r"patch\s+\w+", re.IGNORECASE),
+            re.compile(r"issue\s+\d+", re.IGNORECASE)
         ],
         "refactor": [
-            r"refactor",
-            r"restructure",
-            r"reorganize",
-            r"extract\s+\w+",
-            r"simplify"
+            re.compile(r"refactor", re.IGNORECASE),
+            re.compile(r"restructure", re.IGNORECASE),
+            re.compile(r"reorganize", re.IGNORECASE),
+            re.compile(r"extract\s+\w+", re.IGNORECASE),
+            re.compile(r"simplify", re.IGNORECASE)
         ],
         "perf": [
-            r"optimize",
-            r"performance",
-            r"speed\s+up",
-            r"cache",
-            r"lazy"
+            re.compile(r"optimize", re.IGNORECASE),
+            re.compile(r"performance", re.IGNORECASE),
+            re.compile(r"speed\s+up", re.IGNORECASE),
+            re.compile(r"cache", re.IGNORECASE),
+            re.compile(r"lazy", re.IGNORECASE)
         ],
         "security": [
-            r"security",
-            r"vulnerability",
-            r"xss",
-            r"injection",
-            r"csrf"
+            re.compile(r"security", re.IGNORECASE),
+            re.compile(r"vulnerability", re.IGNORECASE),
+            re.compile(r"xss", re.IGNORECASE),
+            re.compile(r"injection", re.IGNORECASE),
+            re.compile(r"csrf", re.IGNORECASE)
         ]
     }
 
     for change_type, patterns in content_keywords.items():
         for pattern in patterns:
-            if re.search(pattern, diff, re.IGNORECASE):
+            if pattern.search(diff):
                 return change_type
 
     # 优先级 3：检查是否有大量文件删除（可能是清理）
@@ -201,16 +209,16 @@ def extract_scope_intelligent(modified_files, added_files, deleted_files):
     if not modified_files and not added_files:
         return ""
 
-    # 获取所有文件的顶级目录/模块
-    all_files = modified_files + added_files
+    # 使用 itertools.chain 避免列表拼接
+    from itertools import chain
+    all_files = chain(modified_files, added_files)
     scopes = []
 
     for file_path in all_files:
         parts = Path(file_path).parts
 
-        # 跳过常见的根目录
-        common_roots = ["src", "lib", "app", "dist", "build", "test", "tests"]
-        if parts and parts[0] in common_roots:
+        # 使用 utils 模块中的常量
+        if parts and parts[0] in utils.FileTypes.COMMON_ROOTS:
             if len(parts) > 1:
                 scopes.append(parts[1])
         elif parts:
@@ -223,7 +231,7 @@ def extract_scope_intelligent(modified_files, added_files, deleted_files):
         if most_common:
             # 只有当某个 scope 出现超过 50% 时才使用
             scope, count = most_common[0]
-            if count >= len(all_files) * 0.5:
+            if count >= len(list(all_files)) * 0.5:
                 return scope
 
     return ""

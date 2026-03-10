@@ -7,7 +7,14 @@
 import json
 import re
 import sys
-from datetime import datetime
+
+# 支持直接运行和模块导入
+try:
+    from . import i18n
+    from . import utils
+except ImportError:
+    import i18n
+    import utils
 
 
 def generate_commit_message(analysis, custom_message=None, language="en"):
@@ -45,12 +52,11 @@ def generate_commit_message(analysis, custom_message=None, language="en"):
         body_parts.append("")
 
     # 添加修改的文件列表（精简版）
-    modified_files = analysis.get("modified_files", [])
-    added_files = analysis.get("added_files", [])
-    deleted_files = analysis.get("deleted_files", [])
+    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
 
     if modified_files or added_files or deleted_files:
-        body_parts.append("Modified files:" if language == "en" else "修改的文件：")
+        header = i18n.get_text(i18n.FILE_STATS, language, "modified_files_header")
+        body_parts.append(header)
         for file in modified_files[:8]:  # 最多显示 8 个
             body_parts.append(f"  {file}")
         for file in added_files[:5]:
@@ -61,7 +67,8 @@ def generate_commit_message(analysis, custom_message=None, language="en"):
         total_files = len(modified_files) + len(added_files) + len(deleted_files)
         shown_files = min(8, len(modified_files)) + min(5, len(added_files)) + min(3, len(deleted_files))
         if total_files > shown_files:
-            body_parts.append(f"  ... and {total_files - shown_files} more files")
+            more_text = i18n.get_text(i18n.FILE_STATS, language, "more_files", count=total_files - shown_files)
+            body_parts.append(more_text)
         body_parts.append("")
 
     # 构建 footer
@@ -69,10 +76,8 @@ def generate_commit_message(analysis, custom_message=None, language="en"):
 
     # 破坏性变更警告
     if is_breaking:
-        if language == "zh":
-            footer_parts.append("⚠️ 破坏性变更：此更新包含不兼容的 API 变更")
-        else:
-            footer_parts.append("⚠️ BREAKING CHANGE: This update contains breaking changes")
+        warning = i18n.get_text(i18n.BREAKING_WARNING, language, "breaking")
+        footer_parts.append(warning)
         footer_parts.append("")
 
     # 关联的 issues/PRs（从 branch 名称或文件内容推断）
@@ -96,64 +101,15 @@ def generate_commit_message(analysis, custom_message=None, language="en"):
 
 def generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, language):
     """智能生成 subject"""
-    # 确定变更类型的描述词
-    type_descriptions = {
-        "en": {
-            "feat": "Add",
-            "fix": "Fix",
-            "refactor": "Refactor",
-            "docs": "Update",
-            "style": "Style",
-            "test": "Test",
-            "chore": "Update",
-            "perf": "Optimize",
-            "ci": "Update CI",
-            "build": "Update build"
-        },
-        "zh": {
-            "feat": "添加",
-            "fix": "修复",
-            "refactor": "重构",
-            "docs": "更新",
-            "style": "优化样式",
-            "test": "测试",
-            "chore": "更新",
-            "perf": "优化",
-            "ci": "更新 CI",
-            "build": "更新构建"
-        }
-    }
+    # 使用 i18n 模块获取变更类型的描述词
+    action = i18n.get_text(i18n.TYPE_DESCRIPTIONS, language, change_type, "Update")
 
-    action = type_descriptions[language].get(change_type, "Update")
+    # 使用 utils 模块提取文件列表
+    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
 
-    # 提取主要影响的模块或文件
-    modified_files = analysis.get("modified_files", [])
-    added_files = analysis.get("added_files", [])
-    deleted_files = analysis.get("deleted_files", [])
-
+    # 使用 utils 提取主要目标
     all_files = modified_files + added_files + deleted_files
-    target = ""
-
-    if all_files:
-        # 获取最主要的文件或目录
-        main_file = all_files[0]
-
-        # 如果是路径，提取最后部分
-        if "/" in main_file:
-            parts = main_file.split("/")
-            # 尝试获取有意义的文件名或目录名
-            for part in reversed(parts):
-                if part and part not in ["src", "lib", "app", "index", "main"]:
-                    target = part
-                    break
-            if not target and parts:
-                target = parts[-1]
-        else:
-            target = main_file
-
-        # 去掉文件扩展名（除非是配置文件）
-        if "." in target and not target.endswith((".json", ".yaml", ".yml", ".toml", ".md")):
-            target = target.rsplit(".", 1)[0]
+    target = utils.extract_target_from_files(all_files) if all_files else ""
 
     # 构建 subject
     if scope and target:
@@ -174,30 +130,20 @@ def generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, lan
 
 def generate_change_description(analysis, language):
     """生成变更描述"""
-    modified_files = analysis.get("modified_files", [])
-    added_files = analysis.get("added_files", [])
-    deleted_files = analysis.get("deleted_files", [])
+    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
 
     if not modified_files and not added_files and not deleted_files:
         return ""
 
     lines = []
 
-    # 统计信息
-    if language == "zh":
-        if added_files:
-            lines.append(f"• 新增 {len(added_files)} 个文件")
-        if deleted_files:
-            lines.append(f"• 删除 {len(deleted_files)} 个文件")
-        if modified_files:
-            lines.append(f"• 修改 {len(modified_files)} 个文件")
-    else:
-        if added_files:
-            lines.append(f"• Add {len(added_files)} new files")
-        if deleted_files:
-            lines.append(f"• Remove {len(deleted_files)} files")
-        if modified_files:
-            lines.append(f"• Modify {len(modified_files)} files")
+    # 使用 i18n 模块获取统计信息文本
+    if added_files:
+        lines.append(i18n.get_text(i18n.FILE_STATS, language, "added", count=len(added_files)))
+    if deleted_files:
+        lines.append(i18n.get_text(i18n.FILE_STATS, language, "deleted", count=len(deleted_files)))
+    if modified_files:
+        lines.append(i18n.get_text(i18n.FILE_STATS, language, "modified", count=len(modified_files)))
 
     return "\n".join(lines)
 
@@ -206,12 +152,11 @@ def extract_issue_references(analysis):
     """从分析结果中提取 issue/PR 引用"""
     refs = set()
 
+    # 使用 utils 模块提取文件列表
+    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
+
     # 从文件名中查找 issue 编号（如 fix-123, feature-456）
-    all_files = (
-        analysis.get("modified_files", []) +
-        analysis.get("added_files", []) +
-        analysis.get("deleted_files", [])
-    )
+    all_files = list(modified_files) + list(added_files) + list(deleted_files)
 
     for file_path in all_files:
         # 查找 #123 格式
