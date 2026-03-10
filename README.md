@@ -34,6 +34,16 @@ ls -la ~/.claude/skills/github-smart-commit/
 - `scripts/` - Python 脚本目录
 - `references/` - 参考文件目录
 
+### 3. （可选）安装 Git Commit 模板
+
+如果你想手动使用 commit 模板，可以安装全局 Git 模板：
+
+```bash
+./install-template.sh
+```
+
+安装后，每次执行 `git commit` 都会看到符合 Conventional Commits 规范的中文模板。
+
 ## 使用方法
 
 ### 触发技能
@@ -110,6 +120,66 @@ cp .smart-commit.json.example ~/.smart-commit.json
 | `max_files_in_commit` | number | `10` | commit 中最大文件数 |
 
 ## Commit 消息模板
+
+### 手动使用 Git Commit 模板
+
+本项目包含一个符合 Conventional Commits 规范的中文 commit 模板（`.gitmessage`），你可以安装它以便在手动提交时使用。
+
+#### 安装模板
+
+```bash
+# 在项目根目录执行
+./install-template.sh
+```
+
+#### 模板格式
+
+模板遵循以下规范：
+
+```
+<类型>(<可选范围>): <简短描述>
+|<-------- 最多 50 个字符 -------->|
+
+解释为什么做这个改动（what & why，不是 how）
+|<---------------------- 尽量每行不超过 72 个字符 ---------------------->|
+
+提供相关 issue、文章或其他资源的链接
+示例：Fixes #23, Related to #456
+```
+
+#### 支持的提交类型
+
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| `feat` | 新功能 | `feat: 添加用户认证功能` |
+| `fix` | 修复 bug | `fix: 修复登录时密码验证错误` |
+| `docs` | 文档变更 | `docs: 更新 README 安装说明` |
+| `style` | 代码格式调整 | `style: 统一代码缩进为 2 空格` |
+| `refactor` | 重构 | `refactor(core): 简化架构，删除冗余代码` |
+| `perf` | 性能优化 | `perf(api): 优化数据库查询性能` |
+| `test` | 测试相关 | `test(auth): 添加认证单元测试` |
+| `build` | 构建系统或依赖变更 | `build: 升级 webpack 到 5.x` |
+| `ci` | CI 配置变更 | `ci: 添加 GitHub Actions 工作流` |
+| `chore` | 其他变更 | `chore: 更新依赖到最新版本` |
+| `revert` | 回退提交 | `revert: 回退 "feat: 实验性功能"` |
+
+#### 破坏性变更
+
+使用 `!` 标记破坏性变更：
+
+```
+feat!: 重构 API 响应格式
+
+BREAKING CHANGE: API 响应格式从 {data: {...}} 改为 {...}，
+前端需要相应调整数据获取方式
+```
+
+#### 卸载模板
+
+```bash
+git config --global --unset commit.template
+rm ~/.gitmessage
+```
 
 ### 智能生成（推荐）
 

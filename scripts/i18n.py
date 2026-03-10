@@ -4,15 +4,15 @@
 统一管理所有中英文文本映射
 """
 
-# 变更类型描述
+# 变更类型描述（符合 Conventional Commits 规范）
 TYPE_DESCRIPTIONS = {
     "en": {
         "feat": "Add",
         "fix": "Fix",
         "refactor": "Refactor",
         "docs": "Update",
-        "style": "Style",
-        "test": "Test",
+        "style": "Fix style in",
+        "test": "Add tests for",
         "chore": "Update",
         "perf": "Optimize",
         "ci": "Update CI",
@@ -23,8 +23,8 @@ TYPE_DESCRIPTIONS = {
         "fix": "修复",
         "refactor": "重构",
         "docs": "更新",
-        "style": "优化样式",
-        "test": "测试",
+        "style": "调整样式",
+        "test": "添加测试",
         "chore": "更新",
         "perf": "优化",
         "ci": "更新 CI",
@@ -32,7 +32,7 @@ TYPE_DESCRIPTIONS = {
     }
 }
 
-# 文件统计描述
+# 文件统计描述（简洁格式）
 FILE_STATS = {
     "en": {
         "added": "• Add {count} new files",
@@ -52,8 +52,58 @@ FILE_STATS = {
 
 # 破坏性变更警告
 BREAKING_WARNING = {
-    "en": "⚠️ BREAKING CHANGE: This update contains breaking changes",
+    "en": "BREAKING CHANGE: This update contains breaking changes",
     "zh": "⚠️ 破坏性变更：此更新包含不兼容的 API 变更"
+}
+
+# 变更详细描述模板
+CHANGE_DESCRIPTIONS = {
+    "en": {
+        "feat": {
+            "default": "Add new functionality",
+            "auth": "Implement authentication and authorization",
+            "api": "Add new API endpoint",
+            "ui": "Add new UI component"
+        },
+        "fix": {
+            "default": "Fix reported issue",
+            "bug": "Fix bug in functionality",
+            "crash": "Fix crash issue"
+        },
+        "refactor": {
+            "default": "Refactor code structure",
+            "simplify": "Simplify implementation",
+            "performance": "Improve code performance"
+        },
+        "docs": {
+            "default": "Update documentation",
+            "readme": "Update README",
+            "api": "Update API documentation"
+        }
+    },
+    "zh": {
+        "feat": {
+            "default": "添加新功能",
+            "auth": "实现身份认证和授权",
+            "api": "添加新的 API 接口",
+            "ui": "添加新的 UI 组件"
+        },
+        "fix": {
+            "default": "修复已报告的问题",
+            "bug": "修复功能缺陷",
+            "crash": "修复崩溃问题"
+        },
+        "refactor": {
+            "default": "重构代码结构",
+            "simplify": "简化实现逻辑",
+            "performance": "优化代码性能"
+        },
+        "docs": {
+            "default": "更新文档",
+            "readme": "更新 README 文档",
+            "api": "更新 API 文档"
+        }
+    }
 }
 
 

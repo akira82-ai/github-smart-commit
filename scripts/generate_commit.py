@@ -6,9 +6,13 @@
 
 import json
 import sys
+import os
 
-from . import i18n
-from . import utils
+# 添加 scripts 目录到 Python 路径
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import i18n
+import utils
 
 
 def generate_commit_message(analysis, custom_message=None, language="zh"):
@@ -67,7 +71,7 @@ def generate_commit_message(analysis, custom_message=None, language="zh"):
     footer_parts = []
 
     if is_breaking:
-        warning = i18n.get_text(i18n.BREAKING_WARNING, language, "breaking")
+        warning = i18n.BREAKING_WARNING.get(language, i18n.BREAKING_WARNING.get("zh", ""))
         footer_parts.append(warning)
         footer_parts.append("")
 
@@ -85,15 +89,15 @@ def generate_commit_message(analysis, custom_message=None, language="zh"):
 
 
 def generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, language):
-    """智能生成 subject"""
-    action = i18n.get_text(i18n.TYPE_DESCRIPTIONS, language, change_type, "Update")
+    """智能生成 subject（符合 Conventional Commits 规范）"""
+    action = i18n.get_text(i18n.TYPE_DESCRIPTIONS, language, change_type, "更新")
 
     modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
 
     all_files = modified_files + added_files + deleted_files
     target = utils.extract_target_from_files(all_files) if all_files else ""
 
-    # 构建 subject
+    # 构建 subject（简化格式，更符合中文习惯）
     if scope and target:
         subject = f"{emoji} {change_type}({scope}): {action} {target}"
     elif scope:
@@ -101,7 +105,20 @@ def generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, lan
     elif target:
         subject = f"{emoji} {change_type}: {action} {target}"
     else:
-        subject = f"{emoji} {change_type}: {action.lower()}"
+        # 如果没有明确目标，使用通用描述
+        generic_descriptions = {
+            "feat": "添加新功能" if language == "zh" else "Add new feature",
+            "fix": "修复问题" if language == "zh" else "Fix issue",
+            "refactor": "重构代码" if language == "zh" else "Refactor code",
+            "docs": "更新文档" if language == "zh" else "Update docs",
+            "style": "调整样式" if language == "zh" else "Fix style",
+            "test": "添加测试" if language == "zh" else "Add tests",
+            "chore": "更新配置" if language == "zh" else "Update config",
+            "perf": "优化性能" if language == "zh" else "Optimize performance",
+            "ci": "更新 CI 配置" if language == "zh" else "Update CI config",
+            "build": "更新构建配置" if language == "zh" else "Update build config"
+        }
+        subject = f"{emoji} {change_type}: {generic_descriptions.get(change_type, action)}"
 
     if is_breaking:
         subject += " !"
@@ -110,20 +127,35 @@ def generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, lan
 
 
 def generate_change_description(analysis, language):
-    """生成变更描述"""
+    """生成变更描述（更详细）"""
     modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
 
     if not modified_files and not added_files and not deleted_files:
         return ""
 
     lines = []
+    change_type = analysis.get("type", "")
+    scope = analysis.get("scope", "")
 
+    # 统计信息
     if added_files:
         lines.append(i18n.get_text(i18n.FILE_STATS, language, "added", count=len(added_files)))
     if deleted_files:
         lines.append(i18n.get_text(i18n.FILE_STATS, language, "deleted", count=len(deleted_files)))
     if modified_files:
         lines.append(i18n.get_text(i18n.FILE_STATS, language, "modified", count=len(modified_files)))
+
+    # 根据类型和范围添加更具体的描述
+    if change_type and language == "zh":
+        descriptions = i18n.CHANGE_DESCRIPTIONS.get("zh", {})
+        type_descs = descriptions.get(change_type, {})
+
+        if scope and scope in type_descs:
+            lines.append("")
+            lines.append(type_descs[scope])
+        elif "default" in type_descs:
+            lines.append("")
+            lines.append(type_descs["default"])
 
     return "\n".join(lines)
 
