@@ -139,15 +139,16 @@ def classify_file(filepath, change_type, change_status):
     Returns:
         类别名称字符串
     """
-    filename = filepath.lower()
+    filename = Path(filepath).name.lower()
+    path_lower = filepath.lower()
     path_parts = Path(filepath).parts
 
     # 文档类
-    if any(p.search(filename) for p in ClassificationPatterns.DOC_PATTERNS):
+    if any(p.search(path_lower) for p in ClassificationPatterns.DOC_PATTERNS):
         return "documentation"
 
     # 配置类
-    if any(p.search(filename) for p in ClassificationPatterns.CONFIG_PATTERNS):
+    if any(p.search(path_lower) for p in ClassificationPatterns.CONFIG_PATTERNS):
         return "configuration"
 
     # i18n 国际化相关
@@ -155,11 +156,11 @@ def classify_file(filepath, change_type, change_status):
         return "configuration"
 
     # 测试类
-    if any(p.search(filename) for p in ClassificationPatterns.TEST_PATTERNS):
+    if any(p.search(path_lower) for p in ClassificationPatterns.TEST_PATTERNS):
         return "testing"
 
     # 性能优化相关
-    if any(p.search(filename) for p in ClassificationPatterns.PERF_PATTERNS):
+    if any(p.search(path_lower) for p in ClassificationPatterns.PERF_PATTERNS):
         return "performance"
 
     # 生成器、分析器、工具等核心模块
