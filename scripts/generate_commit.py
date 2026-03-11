@@ -217,14 +217,14 @@ def generate_smart_description(modified_files, added_files, deleted_files, chang
     # 分析新增文件
     if added_files:
         for file in added_files:
-            desc = describe_file_change(file, "added")
+            desc = utils.describe_file_change(file, "added")
             if desc:
                 descriptions.append(f"  + {file} - {desc}")
 
     # 分析修改文件
     if modified_files:
         for file in modified_files:
-            desc = describe_file_change(file, "modified")
+            desc = utils.describe_file_change(file, "modified")
             if desc:
                 descriptions.append(f"  ~ {file} - {desc}")
 
@@ -251,90 +251,6 @@ def generate_smart_description(modified_files, added_files, deleted_files, chang
         descriptions.insert(0, change_descriptions.get(change_type, "更新代码"))
 
     return descriptions
-
-
-def describe_file_change(filepath, change_type):
-    """描述单个文件的变更内容"""
-    filename = filepath.lower()
-
-    # 根据路径和文件名判断
-    # 认证相关
-    if "auth" in filename or "login" in filename or "oauth" in filename:
-        if "provider" in filename:
-            return "OAuth 提供商"
-        elif "session" in filename:
-            return "会话管理"
-        return "认证模块"
-
-    # API 相关
-    if "api" in filename:
-        if "user" in filename:
-            return "用户 API"
-        return "API 接口"
-
-    # 数据库相关
-    if "db" in filename or "database" in filename or "query" in filename:
-        return "数据库操作"
-
-    # UI 相关
-    if "ui" in filename or "component" in filename or "view" in filename:
-        return "UI 组件"
-
-    # 测试相关
-    if "test" in filename:
-        if change_type == "added":
-            return "测试用例"
-        return "测试代码"
-
-    # 配置相关
-    if "config" in filename:
-        return "配置管理"
-
-    # 文档类
-    if any(doc in filename for doc in ["readme", "contributing", "changelog", "license"]):
-        if change_type == "added":
-            return "添加项目文档"
-        elif change_type == "modified":
-            return "更新文档说明"
-
-    # Git 配置
-    if ".gitmessage" in filename or "gitignore" in filename:
-        return "Git 模板"
-
-    # 脚本类
-    if filename.endswith(".sh"):
-        if "install" in filename:
-            return "安装脚本"
-        elif "build" in filename:
-            return "构建脚本"
-        return "Shell 脚本"
-
-    # Python 脚本
-    if filename.endswith(".py"):
-        if "i18n" in filename:
-            return "国际化文本"
-        elif "utils" in filename:
-            return "工具函数"
-        elif "generate" in filename or "gen" in filename:
-            return "生成器"
-        elif "analyze" in filename or "analysis" in filename:
-            return "分析器"
-        return "Python 模块"
-
-    # 配置文件
-    if any(ext in filename for ext in [".json", ".yaml", ".yml", ".toml", ".xml"]):
-        return "配置文件"
-
-    # 示例/模板文件
-    if "example" in filename or "template" in filename or "sample" in filename:
-        return "示例文件"
-
-    # 默认返回文件类型
-    if change_type == "added":
-        return "新文件"
-    elif change_type == "modified":
-        return "更新"
-    return None
 
 
 def generate_simple_body(analysis, language):
