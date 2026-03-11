@@ -13,9 +13,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import i18n
 import utils
+import categorization
 
 
-def generate_commit_message(analysis, custom_message=None, language="zh"):
+def generate_commit_message(analysis, custom_message=None, language="zh", config=None):
     """
     生成 commit 消息
 
@@ -23,12 +24,21 @@ def generate_commit_message(analysis, custom_message=None, language="zh"):
         analysis: analyze_changes.py 的输出结果
         custom_message: 用户自定义的 commit 消息（可选）
         language: "en" 或 "zh"，决定 commit 消息语言
+        config: 配置字典（可选），用于控制消息格式
 
     Returns:
         完整的 commit 消息字符串
     """
     if custom_message:
         return custom_message
+
+    # 加载配置
+    if config is None:
+        config = {}
+    message_format = config.get("commit_message_format", "simple")
+    include_categorization = config.get("include_categorization", False)
+    show_line_changes = config.get("show_line_changes", False)
+    show_emoji_bullets = config.get("show_emoji_bullets", False)
 
     emoji = analysis.get("emoji", "🔧")
     change_type = analysis.get("type", "chore")
@@ -38,24 +48,14 @@ def generate_commit_message(analysis, custom_message=None, language="zh"):
     # 生成 subject
     subject = generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, language)
 
-    # 构建 body
-    body_parts = []
-
-    # 提取文件列表（只提取一次，避免重复）
-    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
-
-    # 添加详细变更描述
-    change_description = generate_change_description(analysis, language, modified_files, added_files, deleted_files)
-    if change_description:
-        body_parts.append(change_description)
-        body_parts.append("")
-
-    # 如果文件太多，添加提示（已在描述中体现主要文件）
-    total_files = len(modified_files) + len(added_files) + len(deleted_files)
-    if total_files > 15:
-        more_text = f"完整变更: 共 {total_files} 个文件"
-        body_parts.append(more_text)
-        body_parts.append("")
+    # 根据格式选择不同的生成方式
+    if message_format == "detailed" or include_categorization:
+        body = generate_detailed_body(
+            analysis, language, config,
+            show_line_changes, show_emoji_bullets
+        )
+    else:
+        body = generate_simple_body(analysis, language)
 
     # 构建 footer
     footer_parts = []
@@ -70,8 +70,8 @@ def generate_commit_message(analysis, custom_message=None, language="zh"):
 
     # 组合完整消息
     commit_message = subject
-    if body_parts:
-        commit_message += "\n\n" + "\n".join(body_parts)
+    if body:
+        commit_message += "\n\n" + body
     if footer_parts:
         commit_message += "\n" + "\n".join(footer_parts)
 
@@ -335,6 +335,210 @@ def describe_file_change(filepath, change_type):
     elif change_type == "modified":
         return "更新"
     return None
+
+
+def generate_simple_body(analysis, language):
+    """
+    生成简单格式的 body（当前默认格式）
+
+    Returns:
+        body 字符串
+    """
+    body_parts = []
+
+    # 提取文件列表
+    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
+
+    # 添加详细变更描述
+    change_description = generate_change_description(analysis, language, modified_files, added_files, deleted_files)
+    if change_description:
+        body_parts.append(change_description)
+        body_parts.append("")
+
+    # 如果文件太多，添加提示
+    total_files = len(modified_files) + len(added_files) + len(deleted_files)
+    if total_files > 15:
+        more_text = f"完整变更: 共 {total_files} 个文件"
+        body_parts.append(more_text)
+        body_parts.append("")
+
+    return "\n".join(body_parts).strip()
+
+
+def generate_detailed_body(analysis, language, config, show_line_changes, show_emoji_bullets):
+    """
+    生成详细格式的 body（用户期望的 CHANGELOG 风格）
+
+    结构：
+    1. 总体说明（智能生成）
+    2. 分类变更列表（**核心改进**：...）
+    3. 文件统计（Modified files:、Added files:）
+
+    Returns:
+        body 字符串
+    """
+    body_parts = []
+
+    # 智能分类变更
+    categories = categorization.categorize_changes(analysis, language)
+
+    # 生成总体说明
+    summary = categorization.generate_smart_summary(analysis, categories, language)
+    if summary:
+        body_parts.append(summary)
+        body_parts.append("")
+
+    # 生成分类变更列表
+    category_list = generate_category_list(
+        categories, language, show_emoji_bullets
+    )
+    if category_list:
+        body_parts.append(category_list)
+        body_parts.append("")
+
+    # 生成文件统计
+    file_stats = generate_file_statistics(analysis, language, show_line_changes)
+    if file_stats:
+        body_parts.append(file_stats)
+
+    return "\n".join(body_parts).strip()
+
+
+def generate_category_list(categories, language, show_emoji_bullets):
+    """
+    生成分类变更列表
+
+    格式：
+    **核心改进**：
+    - 描述 1
+    - 描述 2
+
+    **新增功能**：
+    ✅ 功能 1
+    ✅ 功能 2
+
+    Returns:
+        分类列表字符串
+    """
+    lines = []
+
+    # 类别顺序（按优先级）
+    category_order = [
+        "breaking_changes",
+        "core_improvements",
+        "new_features",
+        "bug_fixes",
+        "documentation",
+        "configuration",
+        "testing",
+        "performance"
+    ]
+
+    # 获取类别标题
+    titles = i18n.CATEGORY_TITLES.get(language, i18n.CATEGORY_TITLES.get("zh", {}))
+    bullet_emoji = i18n.BULLET_EMOJIS.get(language, i18n.BULLET_EMOJIS.get("zh", "✅"))
+
+    for category in category_order:
+        items = categories.get(category, [])
+        if not items:
+            continue
+
+        # 添加类别标题
+        title = titles.get(category, category)
+        lines.append(f"{title}：")
+
+        # 添加该类别下的所有项目
+        for item in items:
+            if category == "breaking_changes":
+                # 破坏性变更是特殊的，它有 description 和 files
+                desc = item.get("description", "")
+                lines.append(f"- {desc}")
+                files = item.get("files", [])
+                if files:
+                    lines.append(f"  影响范围：{', '.join(files)}")
+            else:
+                # 普通项目：显示文件名和描述
+                file_path = item.get("file", "")
+                desc = item.get("description", "")
+
+                if show_emoji_bullets and category == "new_features":
+                    bullet = bullet_emoji
+                else:
+                    bullet = "-"
+
+                # 如果有描述，显示为：文件名 - 描述
+                if desc and desc != file_path:
+                    lines.append(f"{bullet} {file_path} - {desc}")
+                else:
+                    lines.append(f"{bullet} {file_path}")
+
+        lines.append("")  # 类别之间空一行
+
+    return "\n".join(lines).strip()
+
+
+def generate_file_statistics(analysis, language, show_line_changes):
+    """
+    生成文件统计部分
+
+    格式：
+    Modified files:
+      SKILL.md
+
+    Added files:
+      README.md
+      CHANGELOG.md
+
+    或（带行数变化）：
+    Modified files:
+      SKILL.md (190 行 → 607 行)
+
+    Returns:
+        文件统计字符串
+    """
+    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
+
+    if not modified_files and not added_files and not deleted_files:
+        return ""
+
+    lines = []
+    titles = i18n.FILE_STATS_TITLES.get(language, i18n.FILE_STATS_TITLES.get("zh", {}))
+
+    # 如果需要显示行数变化，提取行数信息
+    line_changes = {}
+    if show_line_changes:
+        line_changes = categorization.extract_line_changes(analysis)
+
+    # Modified files
+    if modified_files:
+        lines.append(titles.get("modified", "Modified files:"))
+        for filepath in modified_files:
+            if show_line_changes and filepath in line_changes:
+                added, deleted = line_changes[filepath]
+                total = added + deleted
+                lines.append(f"  {filepath} ({total} 行)")
+            else:
+                lines.append(f"  {filepath}")
+        lines.append("")
+
+    # Added files
+    if added_files:
+        lines.append(titles.get("added", "Added files:"))
+        for filepath in added_files:
+            if show_line_changes and filepath in line_changes:
+                added, deleted = line_changes[filepath]
+                lines.append(f"  {filepath} (+{added} 行)")
+            else:
+                lines.append(f"  {filepath}")
+        lines.append("")
+
+    # Deleted files
+    if deleted_files:
+        lines.append(titles.get("deleted", "Deleted files:"))
+        for filepath in deleted_files:
+            lines.append(f"  {filepath}")
+
+    return "\n".join(lines).strip()
 
 
 def main():

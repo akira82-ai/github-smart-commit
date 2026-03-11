@@ -10,9 +10,32 @@ from pathlib import Path
 
 
 DEFAULT_CONFIG = {
+    # 语言配置
     "language": "zh",
+
+    # README 更新风格
     "readme_style": "auto",
-    "version_scheme": "semver"
+
+    # 版本号方案
+    "version_scheme": "semver",
+
+    # Commit 消息格式：simple | detailed | compact
+    "commit_message_format": "simple",
+
+    # 是否包含文件统计
+    "include_file_stats": True,
+
+    # 是否包含智能分类（详细格式）
+    "include_categorization": False,
+
+    # 摘要中最多显示的文件数
+    "max_files_in_summary": 10,
+
+    # 是否显示代码行数变化
+    "show_line_changes": False,
+
+    # 使用 emoji 作为列表符号（详细格式）
+    "show_emoji_bullets": False
 }
 
 

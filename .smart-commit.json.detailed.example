@@ -1,0 +1,16 @@
+{
+  "$schema": "./config-schema.json",
+  "_comment": "GitHub Smart Commit 配置文件示例 - 详细格式配置",
+
+  "language": "zh",
+  "readme_style": "auto",
+  "version_scheme": "semver",
+
+  "_comment_commit_message": "Commit 消息格式配置",
+  "commit_message_format": "detailed",
+  "include_file_stats": true,
+  "include_categorization": true,
+  "max_files_in_summary": 10,
+  "show_line_changes": false,
+  "show_emoji_bullets": true
+}

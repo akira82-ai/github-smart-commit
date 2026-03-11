@@ -56,6 +56,50 @@ BREAKING_WARNING = {
     "zh": "⚠️ 破坏性变更：此更新包含不兼容的 API 变更"
 }
 
+# 分类标题（详细格式使用）
+CATEGORY_TITLES = {
+    "zh": {
+        "core_improvements": "**核心改进**",
+        "new_features": "**新增功能**",
+        "bug_fixes": "**修复问题**",
+        "documentation": "**新增文档**",
+        "configuration": "**配置变更**",
+        "testing": "**测试完善**",
+        "performance": "**性能优化**",
+        "breaking_changes": "**破坏性变更**",
+    },
+    "en": {
+        "core_improvements": "**Core Improvements**",
+        "new_features": "**New Features**",
+        "bug_fixes": "**Bug Fixes**",
+        "documentation": "**Documentation**",
+        "configuration": "**Configuration**",
+        "testing": "**Testing**",
+        "performance": "**Performance**",
+        "breaking_changes": "**Breaking Changes**",
+    }
+}
+
+# emoji 列表符号
+BULLET_EMOJIS = {
+    "zh": "✅",
+    "en": "✓"
+}
+
+# 文件统计标题（详细格式）
+FILE_STATS_TITLES = {
+    "zh": {
+        "modified": "修改的文件：",
+        "added": "新增的文件：",
+        "deleted": "删除的文件：",
+    },
+    "en": {
+        "modified": "Modified files:",
+        "added": "Added files:",
+        "deleted": "Deleted files:",
+    }
+}
+
 
 def get_text(mapping, language, key, fallback=None, **kwargs):
     """
