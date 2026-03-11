@@ -188,18 +188,8 @@ def extract_target_from_files(files: List[str]) -> str:
 
 
 def describe_file_change(filepath: str, change_status: str = "") -> str:
-    """
-    统一的文件变更描述函数
-
-    Args:
-        filepath: 文件路径
-        change_status: 变更状态 ("added", "modified", "deleted")
-
-    Returns:
-        文件描述字符串
-    """
     filename = Path(filepath).name.lower()
-    path_parts = Path(filepath).parts
+    path_lower = filepath.lower()
 
     # 特殊文件的描述
     special_files = {
@@ -233,76 +223,76 @@ def describe_file_change(filepath: str, change_status: str = "") -> str:
         return script_descriptions[filename]
 
     # 认证相关
-    if "auth" in filename or "login" in filename or "oauth" in filename:
-        if "provider" in filename:
+    if "auth" in path_lower or "login" in path_lower or "oauth" in path_lower:
+        if "provider" in path_lower:
             return "OAuth 提供商"
-        elif "session" in filename:
+        elif "session" in path_lower:
             return "会话管理"
         return "认证模块"
 
     # API 相关
-    if "api" in filename:
-        if "user" in filename:
+    if "api" in path_lower:
+        if "user" in path_lower:
             return "用户 API"
         return "API 接口"
 
     # 数据库相关
-    if "db" in filename or "database" in filename or "query" in filename:
+    if "db" in path_lower or "database" in path_lower or "query" in path_lower:
         return "数据库操作"
 
     # UI 相关
-    if "ui" in filename or "component" in filename or "view" in filename:
+    if "ui" in path_lower or "component" in path_lower or "view" in path_lower:
         return "UI 组件"
 
     # 工具类
-    if "util" in filename or "helper" in filename or "tool" in filename:
+    if "util" in path_lower or "helper" in path_lower or "tool" in path_lower:
         return "工具函数"
 
     # 生成器、分析器类
-    if "generate" in filename or "gen" in filename or "builder" in filename:
+    if "generate" in path_lower or "gen" in path_lower or "builder" in path_lower:
         return "生成器"
-    if "analyze" in filename or "analysis" in filename or "parser" in filename:
+    if "analyze" in path_lower or "analysis" in path_lower or "parser" in path_lower:
         return "分析器"
-    if "manager" in filename:
+    if "manager" in path_lower:
         return "管理器"
 
     # 测试相关
-    if "test" in filename:
+    if "test" in path_lower:
         return "测试用例" if change_status == "added" else "测试代码"
 
     # 配置相关
-    if "config" in filename or "setting" in filename:
+    if "config" in path_lower or "setting" in path_lower:
         return "配置管理"
 
     # 文档类
-    if any(doc in filename for doc in ["readme", "contributing", "changelog", "license"]):
+    if any(doc in path_lower for doc in ["readme", "contributing", "changelog", "license"]):
         if change_status == "added":
             return "添加项目文档"
         if change_status == "modified":
             return "更新文档说明"
 
     # Git 配置
-    if ".gitmessage" in filename or "gitignore" in filename:
+    if ".gitmessage" in path_lower or "gitignore" in path_lower:
         return "Git 模板"
 
     # 脚本类
     if filename.endswith(".sh"):
-        if "install" in filename:
+        if "install" in path_lower:
             return "安装脚本"
-        if "build" in filename:
+        if "build" in path_lower:
             return "构建脚本"
         return "Shell 脚本"
 
     # Python 脚本
     if filename.endswith(".py"):
-        return "脚本模块" if path_parts and "scripts" in path_parts else "Python 模块"
+        return "脚本模块" if "scripts" in path_lower else "Python 模块"
 
     # 配置文件
     if any(ext in filename for ext in [".json", ".yaml", ".yml", ".toml", ".xml"]):
-        return "配置示例" if "example" in filename or "sample" in filename else "配置文件"
+        return "配置示例" if "example" in path_lower or "sample" in path_lower else "配置文件"
 
     # 示例/模板文件
-    if "example" in filename or "template" in filename or "sample" in filename:
+    if "example" in path_lower or "template" in path_lower or "sample" in path_lower:
         return "示例文件"
 
     # 默认返回
