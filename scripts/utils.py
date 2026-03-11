@@ -173,15 +173,15 @@ def extract_target_from_files(files: List[str]) -> str:
 
     main_file = files[0]
 
+    # 如果路径中包含目录
     if "/" in main_file:
         parts = main_file.split("/")
+        # 从后往前找第一个有意义的部分
         for part in reversed(parts):
             if part and part not in IGNORED_PARTS:
-                target = part
-                break
-        else:
-            target = parts[-1] if parts else main_file
-    else:
-        target = main_file
+                return sanitize_filename(part)
+        # 如果没找到，使用最后一部分
+        return sanitize_filename(parts[-1])
 
-    return sanitize_filename(target)
+    # 如果只是文件名，直接返回
+    return sanitize_filename(main_file)

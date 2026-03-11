@@ -41,14 +41,16 @@ def generate_commit_message(analysis, custom_message=None, language="zh"):
     # 构建 body
     body_parts = []
 
+    # 提取文件列表（只提取一次，避免重复）
+    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
+
     # 添加详细变更描述
-    change_description = generate_change_description(analysis, language)
+    change_description = generate_change_description(analysis, language, modified_files, added_files, deleted_files)
     if change_description:
         body_parts.append(change_description)
         body_parts.append("")
 
     # 如果文件太多，添加提示（已在描述中体现主要文件）
-    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
     total_files = len(modified_files) + len(added_files) + len(deleted_files)
     if total_files > 15:
         more_text = f"完整变更: 共 {total_files} 个文件"
@@ -78,10 +80,8 @@ def generate_commit_message(analysis, custom_message=None, language="zh"):
 
 def generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, language):
     """智能生成 subject（符合 Conventional Commits 规范）"""
-    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
-
     # 分析变更内容，生成更准确的 subject
-    subject_desc = generate_subject_description(modified_files, added_files, deleted_files, change_type, scope, language)
+    subject_desc = generate_subject_description(analysis, change_type, scope, language)
 
     # 构建 subject（简化格式，更符合中文习惯）
     if scope and subject_desc:
@@ -112,8 +112,9 @@ def generate_smart_subject(analysis, emoji, change_type, scope, is_breaking, lan
     return subject
 
 
-def generate_subject_description(modified_files, added_files, deleted_files, change_type, scope, language):
+def generate_subject_description(analysis, change_type, scope, language):
     """根据文件变更生成 subject 描述"""
+    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
     all_files = modified_files + added_files + deleted_files
     if not all_files:
         return None
@@ -180,9 +181,10 @@ def generate_subject_description(modified_files, added_files, deleted_files, cha
     return None
 
 
-def generate_change_description(analysis, language):
+def generate_change_description(analysis, language, modified_files=None, added_files=None, deleted_files=None):
     """生成变更描述（详细说明变更原因）"""
-    modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
+    if modified_files is None:
+        modified_files, added_files, deleted_files = utils.extract_files_from_analysis(analysis)
 
     if not modified_files and not added_files and not deleted_files:
         return ""
@@ -200,7 +202,7 @@ def generate_change_description(analysis, language):
         lines.append(i18n.get_text(i18n.FILE_STATS, language, "modified", count=len(modified_files)))
 
     # 根据文件内容生成智能描述
-    description_lines = generate_smart_description(modified_files, added_files, deleted_files, change_type, language)
+    description_lines = generate_smart_description(modified_files, added_files, deleted_files, change_type)
     if description_lines:
         lines.append("")
         lines.extend(description_lines)
@@ -208,21 +210,21 @@ def generate_change_description(analysis, language):
     return "\n".join(lines)
 
 
-def generate_smart_description(modified_files, added_files, deleted_files, change_type, language):
+def generate_smart_description(modified_files, added_files, deleted_files, change_type):
     """根据文件内容生成智能描述"""
     descriptions = []
 
     # 分析新增文件
     if added_files:
         for file in added_files:
-            desc = describe_file_change(file, "added", language)
+            desc = describe_file_change(file, "added")
             if desc:
                 descriptions.append(f"  + {file} - {desc}")
 
     # 分析修改文件
     if modified_files:
         for file in modified_files:
-            desc = describe_file_change(file, "modified", language)
+            desc = describe_file_change(file, "modified")
             if desc:
                 descriptions.append(f"  ~ {file} - {desc}")
 
@@ -232,30 +234,28 @@ def generate_smart_description(modified_files, added_files, deleted_files, chang
             descriptions.append(f"  - {file}")
 
     # 添加总体变更说明
-    if change_type and language == "zh":
-        change_descriptions = {
-            "feat": "添加新功能，增强系统能力",
-            "fix": "修复已知问题，提升稳定性",
-            "refactor": "重构代码结构，提升可维护性",
-            "docs": "更新项目文档",
-            "style": "调整代码样式，统一格式",
-            "test": "完善测试覆盖",
-            "chore": "更新配置和工具",
-            "perf": "优化性能，提升响应速度",
-            "ci": "更新 CI/CD 配置",
-            "build": "更新构建配置"
-        }
-        if descriptions:
-            descriptions.insert(0, "")
-            descriptions.insert(0, change_descriptions.get(change_type, "更新代码"))
+    change_descriptions = {
+        "feat": "添加新功能，增强系统能力",
+        "fix": "修复已知问题，提升稳定性",
+        "refactor": "重构代码结构，提升可维护性",
+        "docs": "更新项目文档",
+        "style": "调整代码样式，统一格式",
+        "test": "完善测试覆盖",
+        "chore": "更新配置和工具",
+        "perf": "优化性能，提升响应速度",
+        "ci": "更新 CI/CD 配置",
+        "build": "更新构建配置"
+    }
+    if descriptions:
+        descriptions.insert(0, "")
+        descriptions.insert(0, change_descriptions.get(change_type, "更新代码"))
 
     return descriptions
 
 
-def describe_file_change(filepath, change_type, language):
+def describe_file_change(filepath, change_type):
     """描述单个文件的变更内容"""
     filename = filepath.lower()
-    path_parts = filepath.split("/")
 
     # 根据路径和文件名判断
     # 认证相关

@@ -56,56 +56,6 @@ BREAKING_WARNING = {
     "zh": "⚠️ 破坏性变更：此更新包含不兼容的 API 变更"
 }
 
-# 变更详细描述模板
-CHANGE_DESCRIPTIONS = {
-    "en": {
-        "feat": {
-            "default": "Add new functionality",
-            "auth": "Implement authentication and authorization",
-            "api": "Add new API endpoint",
-            "ui": "Add new UI component"
-        },
-        "fix": {
-            "default": "Fix reported issue",
-            "bug": "Fix bug in functionality",
-            "crash": "Fix crash issue"
-        },
-        "refactor": {
-            "default": "Refactor code structure",
-            "simplify": "Simplify implementation",
-            "performance": "Improve code performance"
-        },
-        "docs": {
-            "default": "Update documentation",
-            "readme": "Update README",
-            "api": "Update API documentation"
-        }
-    },
-    "zh": {
-        "feat": {
-            "default": "添加新功能",
-            "auth": "实现身份认证和授权",
-            "api": "添加新的 API 接口",
-            "ui": "添加新的 UI 组件"
-        },
-        "fix": {
-            "default": "修复已报告的问题",
-            "bug": "修复功能缺陷",
-            "crash": "修复崩溃问题"
-        },
-        "refactor": {
-            "default": "重构代码结构",
-            "simplify": "简化实现逻辑",
-            "performance": "优化代码性能"
-        },
-        "docs": {
-            "default": "更新文档",
-            "readme": "更新 README 文档",
-            "api": "更新 API 文档"
-        }
-    }
-}
-
 
 def get_text(mapping, language, key, fallback=None, **kwargs):
     """
