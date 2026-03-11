@@ -185,3 +185,129 @@ def extract_target_from_files(files: List[str]) -> str:
 
     # 如果只是文件名，直接返回
     return sanitize_filename(main_file)
+
+
+def describe_file_change(filepath: str, change_status: str = "") -> str:
+    """
+    统一的文件变更描述函数
+
+    Args:
+        filepath: 文件路径
+        change_status: 变更状态 ("added", "modified", "deleted")
+
+    Returns:
+        文件描述字符串
+    """
+    filename = Path(filepath).name.lower()
+    path_parts = Path(filepath).parts
+
+    # 特殊文件的描述
+    special_files = {
+        "readme.md": "项目说明文档",
+        "changelog.md": "变更日志",
+        "package.json": "项目配置和依赖",
+        "tsconfig.json": "TypeScript 配置",
+        "webpack.config.js": "构建配置",
+        ".gitignore": "Git 忽略规则",
+        ".env.example": "环境变量示例",
+        "dockerfile": "Docker 配置",
+        "docker-compose.yml": "Docker Compose 配置"
+    }
+
+    if filename in special_files:
+        return special_files[filename]
+
+    # 根据脚本文件名判断
+    script_descriptions = {
+        "config.py": "配置管理系统",
+        "i18n.py": "国际化文本映射",
+        "generate_commit.py": "Commit 消息生成器",
+        "analyze_changes.py": "代码变更分析器",
+        "categorization.py": "智能分类模块",
+        "update_readme.py": "README 更新器",
+        "update_version.py": "版本号更新器",
+        "utils.py": "工具函数库"
+    }
+
+    if filename in script_descriptions:
+        return script_descriptions[filename]
+
+    # 认证相关
+    if "auth" in filename or "login" in filename or "oauth" in filename:
+        if "provider" in filename:
+            return "OAuth 提供商"
+        elif "session" in filename:
+            return "会话管理"
+        return "认证模块"
+
+    # API 相关
+    if "api" in filename:
+        if "user" in filename:
+            return "用户 API"
+        return "API 接口"
+
+    # 数据库相关
+    if "db" in filename or "database" in filename or "query" in filename:
+        return "数据库操作"
+
+    # UI 相关
+    if "ui" in filename or "component" in filename or "view" in filename:
+        return "UI 组件"
+
+    # 工具类
+    if "util" in filename or "helper" in filename or "tool" in filename:
+        return "工具函数"
+
+    # 生成器、分析器类
+    if "generate" in filename or "gen" in filename or "builder" in filename:
+        return "生成器"
+    if "analyze" in filename or "analysis" in filename or "parser" in filename:
+        return "分析器"
+    if "manager" in filename:
+        return "管理器"
+
+    # 测试相关
+    if "test" in filename:
+        return "测试用例" if change_status == "added" else "测试代码"
+
+    # 配置相关
+    if "config" in filename or "setting" in filename:
+        return "配置管理"
+
+    # 文档类
+    if any(doc in filename for doc in ["readme", "contributing", "changelog", "license"]):
+        if change_status == "added":
+            return "添加项目文档"
+        if change_status == "modified":
+            return "更新文档说明"
+
+    # Git 配置
+    if ".gitmessage" in filename or "gitignore" in filename:
+        return "Git 模板"
+
+    # 脚本类
+    if filename.endswith(".sh"):
+        if "install" in filename:
+            return "安装脚本"
+        if "build" in filename:
+            return "构建脚本"
+        return "Shell 脚本"
+
+    # Python 脚本
+    if filename.endswith(".py"):
+        return "脚本模块" if path_parts and "scripts" in path_parts else "Python 模块"
+
+    # 配置文件
+    if any(ext in filename for ext in [".json", ".yaml", ".yml", ".toml", ".xml"]):
+        return "配置示例" if "example" in filename or "sample" in filename else "配置文件"
+
+    # 示例/模板文件
+    if "example" in filename or "template" in filename or "sample" in filename:
+        return "示例文件"
+
+    # 默认返回
+    if change_status == "added":
+        return "新文件"
+    if change_status == "modified":
+        return "更新"
+    return "变更"

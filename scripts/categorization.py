@@ -6,6 +6,58 @@
 
 import re
 from pathlib import Path
+from typing import Dict, List
+
+import utils
+
+
+# 预编译的正则表达式模式
+class ClassificationPatterns:
+    """文件分类相关的预编译正则表达式"""
+
+    # 文档类模式
+    DOC_PATTERNS = [
+        re.compile(r"\.md$"),
+        re.compile(r"readme", re.IGNORECASE),
+        re.compile(r"changelog", re.IGNORECASE),
+        re.compile(r"contributing", re.IGNORECASE),
+        re.compile(r"license", re.IGNORECASE),
+        re.compile(r"docs/"),
+        re.compile(r"documentation/")
+    ]
+
+    # 配置类模式
+    CONFIG_PATTERNS = [
+        re.compile(r"config", re.IGNORECASE),
+        re.compile(r"\.json$"),
+        re.compile(r"\.yaml$"),
+        re.compile(r"\.yml$"),
+        re.compile(r"\.toml$"),
+        re.compile(r"\.xml$"),
+        re.compile(r"\.env", re.IGNORECASE),
+        re.compile(r"settings", re.IGNORECASE),
+        re.compile(r"\.conf$"),
+        re.compile(r"\.ini$")
+    ]
+
+    # 测试类模式
+    TEST_PATTERNS = [
+        re.compile(r"test", re.IGNORECASE),
+        re.compile(r"spec", re.IGNORECASE),
+        re.compile(r"__tests__"),
+        re.compile(r"\.test\."),
+        re.compile(r"\.spec\."),
+        re.compile(r"mock", re.IGNORECASE),
+        re.compile(r"fixture", re.IGNORECASE)
+    ]
+
+    # 性能相关模式
+    PERF_PATTERNS = [
+        re.compile(r"cache", re.IGNORECASE),
+        re.compile(r"optimize", re.IGNORECASE),
+        re.compile(r"performance", re.IGNORECASE),
+        re.compile(r"lazy", re.IGNORECASE)
+    ]
 
 
 def categorize_changes(analysis, language="zh"):
@@ -74,7 +126,7 @@ def categorize_changes(analysis, language="zh"):
             categories[category].append({
                 "file": filepath,
                 "status": change_status,
-                "description": describe_change(filepath, change_status, change_type, language)
+                "description": utils.describe_file_change(filepath, change_status)
             })
 
     return categories
@@ -91,20 +143,11 @@ def classify_file(filepath, change_type, change_status):
     path_parts = Path(filepath).parts
 
     # 文档类
-    doc_patterns = [
-        r"\.md$", r"readme", r"changelog", r"contributing",
-        r"license", r"docs/", r"documentation/"
-    ]
-    if any(re.search(p, filename) for p in doc_patterns):
+    if any(p.search(filename) for p in ClassificationPatterns.DOC_PATTERNS):
         return "documentation"
 
     # 配置类
-    config_patterns = [
-        r"config", r"\.json$", r"\.yaml$", r"\.yml$",
-        r"\.toml$", r"\.xml$", r"\.env", r"settings",
-        r"\.conf$", r"\.ini$"
-    ]
-    if any(re.search(p, filename) for p in config_patterns):
+    if any(p.search(filename) for p in ClassificationPatterns.CONFIG_PATTERNS):
         return "configuration"
 
     # i18n 国际化相关
@@ -112,18 +155,11 @@ def classify_file(filepath, change_type, change_status):
         return "configuration"
 
     # 测试类
-    test_patterns = [
-        r"test", r"spec", r"__tests__", r"\.test\.",
-        r"\.spec\.", r"mock", r"fixture"
-    ]
-    if any(re.search(p, filename) for p in test_patterns):
+    if any(p.search(filename) for p in ClassificationPatterns.TEST_PATTERNS):
         return "testing"
 
     # 性能优化相关
-    perf_patterns = [
-        r"cache", r"optimize", r"performance", r"lazy"
-    ]
-    if any(re.search(p, filename) for p in perf_patterns):
+    if any(p.search(filename) for p in ClassificationPatterns.PERF_PATTERNS):
         return "performance"
 
     # 生成器、分析器、工具等核心模块
@@ -152,139 +188,6 @@ def classify_file(filepath, change_type, change_status):
 
     # 默认归类到 other
     return "other"
-
-
-def describe_change(filepath, change_status, change_type, language):
-    """
-    描述文件变更
-
-    Returns:
-        描述字符串
-    """
-    filename = Path(filepath).name.lower()
-    path_parts = Path(filepath).parts
-
-    # 特殊文件的描述
-    special_files = {
-        "readme.md": "项目说明文档",
-        "changelog.md": "变更日志",
-        "package.json": "项目配置和依赖",
-        "tsconfig.json": "TypeScript 配置",
-        "webpack.config.js": "构建配置",
-        ".gitignore": "Git 忽略规则",
-        ".env.example": "环境变量示例",
-        "dockerfile": "Docker 配置",
-        "docker-compose.yml": "Docker Compose 配置"
-    }
-
-    if filename in special_files:
-        return special_files[filename]
-
-    # 根据脚本文件名判断
-    if filename == "config.py":
-        return "配置管理系统"
-    elif filename == "i18n.py":
-        return "国际化文本映射"
-    elif filename == "generate_commit.py":
-        return "Commit 消息生成器"
-    elif filename == "analyze_changes.py":
-        return "代码变更分析器"
-    elif filename == "categorization.py":
-        return "智能分类模块"
-    elif filename == "update_readme.py":
-        return "README 更新器"
-    elif filename == "update_version.py":
-        return "版本号更新器"
-    elif filename == "utils.py":
-        return "工具函数库"
-
-    # 根据路径和文件名判断
-    # 认证相关
-    if "auth" in filename or "login" in filename or "oauth" in filename:
-        if "provider" in filename:
-            return "OAuth 提供商"
-        elif "session" in filename:
-            return "会话管理"
-        return "认证模块"
-
-    # API 相关
-    if "api" in filename:
-        if "user" in filename:
-            return "用户 API"
-        return "API 接口"
-
-    # 数据库相关
-    if "db" in filename or "database" in filename or "query" in filename:
-        return "数据库操作"
-
-    # UI 相关
-    if "ui" in filename or "component" in filename or "view" in filename:
-        return "UI 组件"
-
-    # 工具类
-    if "util" in filename or "helper" in filename or "tool" in filename:
-        return "工具函数"
-
-    # 生成器、分析器类
-    if "generate" in filename or "gen" in filename or "builder" in filename:
-        return "生成器"
-    elif "analyze" in filename or "analysis" in filename or "parser" in filename:
-        return "分析器"
-    elif "manager" in filename:
-        return "管理器"
-
-    # 测试相关
-    if "test" in filename:
-        if change_status == "added":
-            return "测试用例"
-        return "测试代码"
-
-    # 配置相关
-    if "config" in filename or "setting" in filename:
-        return "配置管理"
-
-    # 文档类
-    if any(doc in filename for doc in ["readme", "contributing", "changelog", "license"]):
-        if change_status == "added":
-            return "添加项目文档"
-        elif change_status == "modified":
-            return "更新文档说明"
-
-    # Git 配置
-    if ".gitmessage" in filename or "gitignore" in filename:
-        return "Git 模板"
-
-    # 脚本类
-    if filename.endswith(".sh"):
-        if "install" in filename:
-            return "安装脚本"
-        elif "build" in filename:
-            return "构建脚本"
-        return "Shell 脚本"
-
-    # Python 脚本
-    if filename.endswith(".py"):
-        # 根据所在目录判断
-        if path_parts and "scripts" in path_parts:
-            return "脚本模块"
-        return "Python 模块"
-
-    # 配置文件
-    if any(ext in filename for ext in [".json", ".yaml", ".yml", ".toml", ".xml"]):
-        if "example" in filename or "sample" in filename:
-            return "配置示例"
-        return "配置文件"
-
-    # 示例/模板文件
-    if "example" in filename or "template" in filename or "sample" in filename:
-        return "示例文件"
-
-    # 默认返回文件类型
-    if change_status == "added":
-        return "新文件"
-    elif change_status == "modified":
-        return "更新"
-    return "变更"
 
 
 def get_breaking_description(language):
@@ -321,10 +224,10 @@ def extract_line_changes(analysis):
         filename = parts[0].strip()
         changes = parts[1].strip()
 
-        # 解析行数变化
+        # 解析行数变化（单次遍历）
         # 格式：5 ++++--- 或 10 +++++-----
-        added = changes.count("+")
-        deleted = changes.count("-")
+        added = sum(1 for c in changes if c == '+')
+        deleted = sum(1 for c in changes if c == '-')
 
         if added > 0 or deleted > 0:
             line_changes[filename] = (added, deleted)
